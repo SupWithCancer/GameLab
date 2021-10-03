@@ -1,3 +1,5 @@
+import random
+
 import pygame
 from pygame.locals import *
 from const import *
@@ -6,6 +8,7 @@ from nodes import NodeGroup
 from coins import CoinGroup
 from ghosts import GhostGroup
 from pause import Pause
+import searchalgo
 from text import TextGroup
 from sprites import MazeSprites
 
@@ -22,6 +25,7 @@ class GameController(object):
         self.lives = 5
         self.score = 0
         self.textgroup = TextGroup()
+        self.searchMode = 0
 
 
 
@@ -39,17 +43,22 @@ class GameController(object):
 
     def startGame(self):
         self.setBackground()
-        self.mazesprites = MazeSprites("maze1.txt")
+        self.generateMap()
+        self.mazesprites = MazeSprites("maze_rnd.txt")
         self.background = self.mazesprites.constructBackground(self.background, self.level % 5)
-        self.nodes = NodeGroup("maze1.txt")
+        self.nodes = NodeGroup("maze_rnd.txt")
         self.nodes.setPortalPair((0, 17), (27, 17))
         #self.nodes.setupTestNodes()
         #self.pacman = Pacman(self.nodes.nodeList[0])
         homekey = self.nodes.createHomeNodes(11.5, 14)
         self.nodes.connectHomeNodes(homekey, (12, 14), LEFT)
         self.nodes.connectHomeNodes(homekey, (15, 14), RIGHT)
-        self.pacman = Pacman(self.nodes.getNodeFromTiles(15, 26))
-        self.coins = CoinGroup("maze1.txt")
+        self.nodesAdjacent, self.weightsAdjacent = self.nodes.getAdjacent()
+        try:
+            self.pacman = Pacman(self.nodes.getNodeFromTiles(15, 26))
+        except AttributeError:
+            self.restartGame()
+        self.coins = CoinGroup("maze_rnd.txt")
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
         self.ghosts.blinky.setStartNode(self.nodes.getNodeFromTiles(2 + 11.5, 0 + 14))
         self.ghosts.pinky.setStartNode(self.nodes.getNodeFromTiles(2 + 11.5, 3 + 14))
@@ -86,6 +95,11 @@ class GameController(object):
                      else:
                         self.textgroup.showText(PAUSETXT)
                         self.hideEntities()
+                elif event.key == K_z:
+                    self.searchMode = (self.searchMode + 1) % 4
+
+                elif event.key == K_r:
+                    self.restartGame()
 
     def checkGhostEvents(self):
         for ghost in self.ghosts:
@@ -126,6 +140,7 @@ class GameController(object):
         self.pacman.render(self.screen)
         self.ghosts.render(self.screen)
         self.textgroup.render(self.screen)
+        self.renderPaths(self.screen)
         pygame.display.update()
 
     def checkCoinEvents(self):
@@ -151,6 +166,39 @@ class GameController(object):
     def updateScore(self, points):
         self.score += points
         self.textgroup.updateScore(self.score)
+
+    def renderPaths(self, screen):
+        for num, ghost in enumerate(self.ghosts.ghosts):
+            if self.searchMode == 1:
+                searchalgo.draw(searchalgo.bfs(self.nodesAdjacent,
+                                               ghost.target.position.asTuple(),
+                                               self.pacman.target.position.asTuple(),
+                                               self.weightsAdjacent), screen, num)
+            elif self.searchMode == 2:
+                searchalgo.draw(searchalgo.dfs(self.nodesAdjacent,
+                                               ghost.target.position.asTuple(),
+                                               self.pacman.target.position.asTuple(),
+                                               self.weightsAdjacent), screen, num)
+            elif self.searchMode == 3:
+                searchalgo.draw(searchalgo.ucs(self.nodesAdjacent,
+                                               ghost.target.position.asTuple(),
+                                               self.pacman.target.position.asTuple(),
+                                               self.weightsAdjacent), screen, num)
+
+    def generateMap(self):
+        r = open('maze1.txt', 'r')
+        w = open('maze_rnd.txt', 'w')
+        for line in r.read():
+            for char in line:
+                if char == '+':
+                    if random.random() < 0.05:
+                        w.write('1')
+                    else:
+                        w.write('+')
+                else:
+                    w.write(char)
+        r.close()
+        w.close()
 
 
 if __name__ == "__main__":

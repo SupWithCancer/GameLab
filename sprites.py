@@ -1,7 +1,7 @@
 import pygame
 from const import *
 import numpy as np
-from animation import Animator
+# from animation import Animator
 BASETILEWIDTH = 16
 BASETILEHEIGHT = 16
 

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import pygame
 from vector import Vector2
 from const import *
@@ -115,7 +117,19 @@ class NodeGroup(object):
         self.nodesLUT[homekey].neighbors[direction] = self.nodesLUT[key]
         self.nodesLUT[key].neighbors[direction*-1] = self.nodesLUT[homekey]
 
-
+    def getAdjacent(self):
+        adjList = defaultdict(set)
+        weights = defaultdict(lambda: float('+inf'))
+        for node in self.nodesLUT.keys():
+            for adjNode in self.nodesLUT[node].neighbors.values():
+                if adjNode is not None:
+                    adjList[(self.nodesLUT[node].position).asTuple()].add((adjNode.position).asTuple())
+                    adjList[(adjNode.position).asTuple()].add((self.nodesLUT[node].position).asTuple())
+                    distance = (self.nodesLUT[node].position - adjNode.position)
+                    distance = int(abs(distance.x) + abs(distance.y))
+                    weights[((self.nodesLUT[node].position).asTuple(), (adjNode.position).asTuple())] = distance
+                    weights[((adjNode.position).asTuple(), (self.nodesLUT[node].position).asTuple())] = distance
+        return adjList, weights
 
 
 """
